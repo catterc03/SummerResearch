@@ -3,6 +3,9 @@
 # Desc: Base program to clean data for 2025 Summer Research. This program cleans data 
 # of BC employment assistance cases with respect to CMACAs and also includes number of recips 
 # and depchlds. 
+#
+# This code was developed with assistance from OpenAI's ChatGPT (GPT-4) language model.
+# https://openai.com/chatgpt
 
 library(dplyr)
 
@@ -37,8 +40,14 @@ agg_yearly <- Data %>%
 # Lists all CMA codes present in the data set
 cma_list <- split(agg_yearly, agg_yearly$cmaca)
 
-#Test line which outputs data from 1 CMA "905"
-cma_905 <- cma_list[["905"]]
+cma_datasets <- list()
+
+for (cmaca_code in names(cma_list)){
+cma_datasets[[cmaca_code]] <- cma_list[[cmaca_code]]
+}
+
+print(names(cma_datasets))
+
 
 #Function to filter data by date(YYYYMM) and CMACA given by respective dictionary code,
 # data: takes in data set to filter
