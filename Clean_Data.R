@@ -1,16 +1,14 @@
 # Name: Christopher Catterick
-# Version: 1.1
+# Version: 1.2
 # Desc: Base program to clean data for 2025 Summer Research. This program cleans data 
 # of BC employment assistance cases with respect to CMACAs and also includes number of recips 
 # and depchlds. 
 #
-# This code was developed with assistance from OpenAI's ChatGPT (GPT-4) language model.
-# https://openai.com/chatgpt
 
 library(dplyr)
+library(ggplot2)
 
 #Assign Data to represent dataset
-Data <- bcea_cmaca 
 Data <- bcea_cmaca 
 
 #Assigning objects for each column
@@ -37,16 +35,21 @@ agg_yearly <- Data %>%
     .groups = "drop"
   )
 
-# Lists all CMA codes present in the data set
+# Creates a list and seperates the data for each CMA aggregated by year
 cma_list <- split(agg_yearly, agg_yearly$cmaca)
 
-cma_datasets <- list()
-
-for (cmaca_code in names(cma_list)){
-cma_datasets[[cmaca_code]] <- cma_list[[cmaca_code]]
+#outputs a unique CSV file for each CMA
+for (code in names(cma_list)){
+  write.csv(cma_list[[code]], paste0("CMA_",code, "_yearly.csv"),row.names = FALSE)
 }
-
-print(names(cma_datasets))
+  
+ggplot(agg_yearly, 
+  mapping = aes(x = year,y = cases, group = cmaca, color = cmaca)
+  ) +
+  geom_line(linewidth = 1) +
+  labs(title = "BC CMA Employment Assistance Usage",
+      x = "Year",
+      y = "Total Cases")
 
 
 #Function to filter data by date(YYYYMM) and CMACA given by respective dictionary code,
@@ -54,6 +57,8 @@ print(names(cma_datasets))
 # Area: Takes in string of area code to filter by respective area code
 # Min: Takes the min timeframe (YYYYMM)
 # Max: Take the max timeframe (YYYYMM)
+#
+# Function is grandfathered
 
 # fdata <- function(data, area, min, max) {
 #   data |>
