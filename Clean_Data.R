@@ -1,33 +1,28 @@
 # Name: Christopher Catterick
-# Version: 1.2
+# Version: 3.0
 # Desc: Base program to clean data for 2025 Summer Research. This program cleans data 
-# of BC employment assistance cases with respect to CMACAs and also includes number of recips 
+# of BC employment assistance cases with respect to top 75 CSDs and also includes number of recips 
 # and depchlds. 
 #
 
 library(dplyr)
 library(ggplot2)
+library(tidyverse)
+library(MatchIt)
 
-#Assign Data to represent dataset
-Data <- bcea_cmaca 
+Data <- bcea_cmaca
+Data_new <- bcea_top_municipalities
 
-#Assigning objects for each column
-ym <- Data$ym
-cmaca <- Data$cmaca 
-cases <- Data$cases
-recips <- Data$recips
-depchld <- Data$depchld
-
-#Mutate Data to create columns for year and CMA in the correct format
-Data <- Data %>%
+#Mutate Data
+Data_new <- Data_new %>%
   mutate(
     year = as.integer(substr(as.character(ym),1 ,4 )),
-    cmaca = as.character(cmaca)
+    csdname = str_trim(str_to_title(as.character(csdname)))
   )
 
 #Create agg_yearly to aggregate the values from raw dataset into a Year based format
-agg_yearly <- Data %>%
-  group_by(cmaca, year) %>%
+agg_yearly <- Data_new %>%
+  group_by(csdname, year) %>%
   summarize(
     cases = sum(cases, na.rm = TRUE),
     recips = sum(recips, na.rm = TRUE),
@@ -35,21 +30,32 @@ agg_yearly <- Data %>%
     .groups = "drop"
   )
 
-# Creates a list and seperates the data for each CMA aggregated by year
-cma_list <- split(agg_yearly, agg_yearly$cmaca)
+# Creates a lists of CMA codes for split
+csd_list <- split(agg_yearly, agg_yearly$csdname)
 
 #outputs a unique CSV file for each CMA
-for (code in names(cma_list)){
-  write.csv(cma_list[[code]], paste0("CMA_",code, "_yearly.csv"),row.names = FALSE)
+for (code in names(csd_list)){
+  write.csv(csd_list[[code]], paste0("CSD_",code, "_yearly.csv"),row.names = FALSE)
 }
-  
-ggplot(agg_yearly, 
-  mapping = aes(x = year,y = cases, group = cmaca, color = cmaca)
+
+#ggplot to plot all CMAs included in Data set for comparison. CMA dictionary included in REPO
+ggplot(dplyr::filter(agg_yearly),
+  mapping = aes(x = year,y = cases, group = csdname, color = csdname)
+  ) +
+  scale_x_continuous(
+    limits = c(1995,2014),
+    breaks= seq(1995, 2014, by = 2) 
+  ) +
+  scale_y_continuous(
+    limits = c(0,50000),
+    breaks = seq(0,50000, by = 5000)
   ) +
   geom_line(linewidth = 1) +
-  labs(title = "BC CMA Employment Assistance Usage",
+  labs(title = "BC CSD Employment Assistance Usage",
       x = "Year",
       y = "Total Cases")
+
+
 
 
 #Function to filter data by date(YYYYMM) and CMACA given by respective dictionary code,
