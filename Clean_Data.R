@@ -20,6 +20,11 @@ Data_new <- Data_new %>%
     csdname = str_trim(str_to_title(as.character(csdname)))
   )
 
+closure_data <- data.frame(
+  csdname = c(),
+  closure_year = c()
+)
+
 #Create agg_yearly to aggregate the values from raw dataset into a Year based format
 agg_yearly <- Data_new %>%
   group_by(csdname, year) %>%
@@ -30,30 +35,31 @@ agg_yearly <- Data_new %>%
     .groups = "drop"
   )
 
-# Creates a lists of CMA codes for split
+# Creates a lists of CSD codes for split
 csd_list <- split(agg_yearly, agg_yearly$csdname)
 
-#outputs a unique CSV file for each CMA
+#outputs a unique CSV file for each CSD
 for (code in names(csd_list)){
   write.csv(csd_list[[code]], paste0("CSD_",code, "_yearly.csv"),row.names = FALSE)
 }
 
-#ggplot to plot all CMAs included in Data set for comparison. CMA dictionary included in REPO
-ggplot(dplyr::filter(agg_yearly),
-  mapping = aes(x = year,y = cases, group = csdname, color = csdname)
+#ggplot to plot all CSDs included in Data set for comparison.
+ggplot(dplyr::filter(agg_yearly, csdname %in% c("Delta")),
+  aes(x = year,y = cases, group = csdname, color = csdname)
   ) +
   scale_x_continuous(
     limits = c(1995,2014),
-    breaks= seq(1995, 2014, by = 2) 
+    breaks= seq(1995, 2014, by = 1) 
   ) +
   scale_y_continuous(
-    limits = c(0,50000),
-    breaks = seq(0,50000, by = 5000)
+    limits = c(0,35000),
+    breaks = seq(0,35000, by = 2500)
   ) +
   geom_line(linewidth = 1) +
   labs(title = "BC CSD Employment Assistance Usage",
       x = "Year",
-      y = "Total Cases")
+      y = "Total Cases") +
+      geom_vline(xintercept = 2010, linetype = "dashed", color = "red", linewidth = 1)
 
 
 
