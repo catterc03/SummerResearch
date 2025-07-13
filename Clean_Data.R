@@ -9,6 +9,7 @@ library(dplyr)
 library(ggplot2)
 library(tidyverse)
 library(MatchIt)
+library(fixest)
 
 Data <- bcea_cmaca
 Data_new <- bcea_top_municipalities
@@ -21,8 +22,11 @@ Data_new <- Data_new %>%
   )
 
 closure_data <- data.frame(
-  csdname = c(),
-  closure_year = c()
+  csdname = c("Mackenzie","Ashcroft","Chetwynd","Lillooet","Bella Coola","Fort St. James","Invermere","Hazelton","Valemount","Revelstoke","Houston",
+              "Squamish","Fernie","Burns Lake","Queen Charlotte City","Dease Lake","Sparwood","Creston","Delta","Coquitlam","Sardis","Port Moody",
+              "Castlegar","Parksville","Pitt Meadows","Sidney","White Rock","Clearwater","Sooke","Agassiz","Summerland","Kimberly","Aldergrove"),
+  closure_year = c(2006,2004,2004,2004,2004,2004,2004,2004,2004,2004,2004,2005,2004,2007,2007,2003,2014,2005,2011,2011,2008,2007,2004,2004,2004,2004,
+                   2003,2003,2003,2003,2003,2003,1999)
 )
 
 #Create agg_yearly to aggregate the values from raw dataset into a Year based format
@@ -35,16 +39,19 @@ agg_yearly <- Data_new %>%
     .groups = "drop"
   )
 
+agg_yearly <- agg_yearly %>%
+  left_join(closure_data, by = "csdname")
+
 # Creates a lists of CSD codes for split
 csd_list <- split(agg_yearly, agg_yearly$csdname)
 
 #outputs a unique CSV file for each CSD
-for (code in names(csd_list)){
-  write.csv(csd_list[[code]], paste0("CSD_",code, "_yearly.csv"),row.names = FALSE)
-}
+#for (code in names(csd_list)){
+ # write.csv(csd_list[[code]], paste0("CSD_",code, "_yearly.csv"),row.names = FALSE)
+#}
 
 #ggplot to plot all CSDs included in Data set for comparison.
-ggplot(dplyr::filter(agg_yearly, csdname %in% c("Delta")),
+ggplot(dplyr::filter(agg_yearly, csdname %in% c("Pitt Meadows")),
   aes(x = year,y = cases, group = csdname, color = csdname)
   ) +
   scale_x_continuous(
@@ -52,14 +59,16 @@ ggplot(dplyr::filter(agg_yearly, csdname %in% c("Delta")),
     breaks= seq(1995, 2014, by = 1) 
   ) +
   scale_y_continuous(
-    limits = c(0,35000),
-    breaks = seq(0,35000, by = 2500)
+    limits = c(0,10000),
+    breaks = seq(0,10000, by = 1000)
   ) +
   geom_line(linewidth = 1) +
   labs(title = "BC CSD Employment Assistance Usage",
       x = "Year",
       y = "Total Cases") +
-      geom_vline(xintercept = 2010, linetype = "dashed", color = "red", linewidth = 1)
+      geom_vline(data = filter(agg_yearly, csdname == "Pitt Meadows"), aes(xintercept = closure_year), 
+                 linetype = "dashed", color = "red", linewidth = 1)
+
 
 
 
