@@ -50,26 +50,55 @@ csd_list <- split(agg_yearly, agg_yearly$csdname)
  # write.csv(csd_list[[code]], paste0("CSD_",code, "_yearly.csv"),row.names = FALSE)
 #}
 
-#ggplot to plot all CSDs included in Data set for comparison.
-ggplot(dplyr::filter(agg_yearly, csdname %in% c("Pitt Meadows")),
-  aes(x = year,y = cases, group = csdname, color = csdname)
-  ) +
-  scale_x_continuous(
-    limits = c(1995,2014),
-    breaks= seq(1995, 2014, by = 1) 
-  ) +
-  scale_y_continuous(
-    limits = c(0,10000),
-    breaks = seq(0,10000, by = 1000)
-  ) +
-  geom_line(linewidth = 1) +
-  labs(title = "BC CSD Employment Assistance Usage",
-      x = "Year",
-      y = "Total Cases") +
-      geom_vline(data = filter(agg_yearly, csdname == "Pitt Meadows"), aes(xintercept = closure_year), 
-                 linetype = "dashed", color = "red", linewidth = 1)
+agg_yearly <- agg_yearly %>%
+  mutate(post_closure = ifelse(year >= closure_year, 1, 0),
+         event_time = year - closure_year
+  )
+
+agg_trimmed <- agg_yearly %>%
+  filter(event_time >= -12 & event_time <= 12)
+
+cases <- feols(cases ~ sunab(closure_year, year) | csdname + year, data = agg_trimmed)
+
+iplot(cases)
 
 
+ggplot(agg_trimmed, aes(x = event_time, y = cases)) +
+  geom_line(color = "black", linewidth =0.75 ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red" )+
+  facet_wrap(~ csdname, scales = "free_y",) +
+  labs(
+    Title = "BC Employment Assistance Office Closures Effect on Cases",
+    x = "Years Since Closure",
+    y = "Total Cases"
+  )
+
+etable(cases)
+  
+
+# #ggplot to plot all CSDs included in Data set for comparison.
+# ggplot(dplyr::filter(agg_yearly, csdname %in% c("Pitt Meadows")),
+#   aes(x = year,y = cases, group = csdname, color = csdname)
+#   ) +
+#   scale_x_continuous(
+#     limits = c(1995,2014),
+#     breaks= seq(1995, 2014, by = 1)
+#   ) +
+#   scale_y_continuous(
+#     limits = c(0,10000),
+#     breaks = seq(0,10000, by = 1000)
+#   ) +
+#   geom_line(linewidth = 1) +
+#   labs(title = "BC CSD Employment Assistance Usage",
+#       x = "Year",
+#       y = "Total Cases") +
+#       geom_vline(data = filter(agg_yearly, csdname == "Pitt Meadows"), aes(xintercept = closure_year),
+#                  linetype = "dashed", color = "red", linewidth = 1)
+
+
+
+
+summary(cases)
 
 
 
