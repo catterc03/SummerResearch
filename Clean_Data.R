@@ -13,6 +13,8 @@ library(fixest)
 
 Data <- bcea_cmaca
 Data_new <- bcea_top_municipalities
+Data_pop1 <- BC.POP...2001_2011...Sheet1
+Data_pop2 <- BC.POP.2011_2024...Sheet1
 
 #Mutate Data
 Data_new <- Data_new %>%
@@ -20,6 +22,34 @@ Data_new <- Data_new %>%
     year = as.integer(substr(as.character(ym),1 ,4 )),
     csdname = str_trim(str_to_title(as.character(csdname)))
   )
+
+#Reformat excel sheet data for pop. 2001-2011
+pop_long <- Data_pop1 %>%
+  pivot_longer(
+    cols = starts_with("X"),
+    names_to = "year",
+    values_to = "population"
+  ) %>%
+  mutate(
+    year = as.integer(sub("X","", year))
+  ) %>%
+  select(Name, year, population)
+
+#Reformat Excel Sheet data for pop. 2012-2024
+pop_long2 <- Data_pop2 %>%
+  pivot_longer(
+    cols = starts_with("X"),
+    names_to = "year",
+    values_to = "population"
+  ) %>%
+  mutate(
+    year = as.integer(sub("X","", year))
+  ) %>%
+  select(Name, year, population)
+
+#combine 2 sheets
+combined_pop <- bind_rows(pop_long, pop_long2)
+
 
 closure_data <- data.frame(
   csdname = c("Mackenzie","Ashcroft","Chetwynd","Lillooet","Bella Coola","Fort St. James","Invermere","Hazelton","Valemount","Revelstoke","Houston",
@@ -29,7 +59,9 @@ closure_data <- data.frame(
                    2003,2003,2003,2003,2003,2003,1999)
 )
 
-#Create agg_yearly to aggregate the values from raw dataset into a Year based format
+per_capita <-
+
+#Create agg_yearly to aggregate the values from raw datasets
 agg_yearly <- Data_new %>%
   group_by(csdname, year) %>%
   summarize(
@@ -39,30 +71,46 @@ agg_yearly <- Data_new %>%
     .groups = "drop"
   )
 
+#add closure data into agg_yearly
 agg_yearly <- agg_yearly %>%
-  left_join(closure_data, by = "csdname")
+  left_join(closure_data, by = "csdname") %>%
+  left_join(combined_pop, by = c("csdname" = "Name","year"))
 
 # Creates a lists of CSD codes for split
 csd_list <- split(agg_yearly, agg_yearly$csdname)
 
-#outputs a unique CSV file for each CSD
-#for (code in names(csd_list)){
- # write.csv(csd_list[[code]], paste0("CSD_",code, "_yearly.csv"),row.names = FALSE)
-#}
-
+#Adds post closure and event time
 agg_yearly <- agg_yearly %>%
   mutate(post_closure = ifelse(year >= closure_year, 1, 0),
          event_time = year - closure_year
   )
 
+#filter for event time range
 agg_trimmed <- agg_yearly %>%
-  filter(event_time >= -12 & event_time <= 12)
+  filter(event_time >= -4 & event_time <= 4)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Regression: # of cases on office closure 
 cases <- feols(cases ~ sunab(closure_year, year) | csdname + year, data = agg_trimmed)
 
 iplot(cases)
 
-
+#Event closure plots raw
 ggplot(agg_trimmed, aes(x = event_time, y = cases)) +
   geom_line(color = "black", linewidth =0.75 ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "red" )+
@@ -74,44 +122,5 @@ ggplot(agg_trimmed, aes(x = event_time, y = cases)) +
   )
 
 etable(cases)
-  
-
-# #ggplot to plot all CSDs included in Data set for comparison.
-# ggplot(dplyr::filter(agg_yearly, csdname %in% c("Pitt Meadows")),
-#   aes(x = year,y = cases, group = csdname, color = csdname)
-#   ) +
-#   scale_x_continuous(
-#     limits = c(1995,2014),
-#     breaks= seq(1995, 2014, by = 1)
-#   ) +
-#   scale_y_continuous(
-#     limits = c(0,10000),
-#     breaks = seq(0,10000, by = 1000)
-#   ) +
-#   geom_line(linewidth = 1) +
-#   labs(title = "BC CSD Employment Assistance Usage",
-#       x = "Year",
-#       y = "Total Cases") +
-#       geom_vline(data = filter(agg_yearly, csdname == "Pitt Meadows"), aes(xintercept = closure_year),
-#                  linetype = "dashed", color = "red", linewidth = 1)
-
-
-
-
 summary(cases)
-
-
-
-#Function to filter data by date(YYYYMM) and CMACA given by respective dictionary code,
-# data: takes in data set to filter
-# Area: Takes in string of area code to filter by respective area code
-# Min: Takes the min timeframe (YYYYMM)
-# Max: Take the max timeframe (YYYYMM)
-#
-# Function is grandfathered
-
-# fdata <- function(data, area, min, max) {
-#   data |>
-#     filter(cmaca == area, ym >= min, ym <= max)
-# }
 
